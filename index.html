@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DURKA Tap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      background: #876969;
+    }
+    .screen {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-size: cover;
+      background-position: center;
+    }
+    .hidden {
+      display: none;
+    }
+    .box {
+      background: rgba(255,255,255,0.9);
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    }
+    button {
+      padding: 15px 20px;
+      margin-top: 10px;
+      background-color: #68d19b;
+      color: #000;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    input {
+      padding: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    /* Fullscreen game area */
+    #game-screen {
+      flex-direction: column;
+    }
+
+    #game-overlay {
+      width: 100%;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      text-align: center;
+    }
+
+    #game-area {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      background-image: url('https://i.pinimg.com/736x/77/b5/05/77b50533a90596be569853b4a93681dd.jpg');
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+    }
+
+    .item {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="screen" id="login-screen" style="background-image: url('https://i.pinimg.com/736x/77/b5/e7/77b5e7df982e2d8e9f3180959499bea6.jpg');">
+  <div class="box">
+    <h2>Masuk</h2>
+    <input id="username" type="text" placeholder="Username" />
+    <button id="login-btn">Masuk</button>
+  </div>
+</div>
+
+<!-- Dashboard Screen -->
+<div class="screen hidden" id="dashboard-screen" style="background-image: url('https://i.pinimg.com/736x/77/b5/e7/77b5e7df982e2d8e9f3180959499bea6.jpg');">
+  <div class="box">
+    <h2>Selamat Bermain, <span id="user-name"></span>!</h2>
+    <p>Point: <span id="points">0</span></p>
+    <p>Ticket: <span id="tickets">0</span></p>
+    <button id="claim-tickets">Claim Ticket</button>
+    <button id="start-game">Mulai Permainan</button>
+    <button id="logout-btn">Keluar</button>
+  </div>
+</div>
+
+<!-- Game Screen Fullscreen -->
+<div class="screen hidden" id="game-screen" style="background: #68d19b;">
+  <div id="game-overlay">
+    <h2>Tap Buahnya Kawan!</h2>
+    <p>Waktu Berakhir: <span id="time-left">30</span>s | Score: <span id="game-score">0</span></p>
+    <button id="end-game">Keluar Permainan</button>
+  </div>
+  <div id="game-area"></div>
+</div>
+
+<script>
+  const loginScreen = document.getElementById('login-screen');
+  const dashboardScreen = document.getElementById('dashboard-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const claimBtn = document.getElementById('claim-tickets');
+
+  let username, points = 0, tickets = 0, gameScore = 0, gameInterval, spawnInterval, timeLeft = 30;
+  let claimTimerInterval;
+
+  const KEY_USERS = 'blum_users';
+  const CLAIM_COOLDOWN = 2 * 60 * 60 * 1000;
+
+  const IMAGES = {
+    fruit: 'carica-removebg-preview.png',
+    bomb: 'bomb-removebg-preview.png',
+    durian: 'durian-removebg-preview.png'
+  };
+
+  function saveUsers(users) { localStorage.setItem(KEY_USERS, JSON.stringify(users)); }
+  function loadUsers() { return JSON.parse(localStorage.getItem(KEY_USERS) || '{}'); }
+
+  function saveUser() {
+    const users = loadUsers();
+    users[username].points = points;
+    users[username].tickets = tickets;
+    saveUsers(users);
+  }
+
+  function getLastClaim() {
+    const users = loadUsers();
+    return users[username].lastClaim || 0;
+  }
+
+  function setLastClaim(time) {
+    const users = loadUsers();
+    users[username].lastClaim = time;
+    saveUsers(users);
+  }
+
+  function checkTicketRefresh() {
+    const lastClaim = getLastClaim();
+    const now = Date.now();
+    if (!lastClaim || now - lastClaim >= CLAIM_COOLDOWN) {
+      tickets = 5;
+      setLastClaim(now - CLAIM_COOLDOWN);
+      saveUser();
+    }
+  }
+
+  function updateClaimButton() {
+    clearInterval(claimTimerInterval);
+    const lastClaim = getLastClaim();
+    const now = Date.now();
+    const remaining = CLAIM_COOLDOWN - (now - lastClaim);
+
+    if (remaining <= 0) {
+      claimBtn.disabled = false;
+      claimBtn.textContent = "Claim Ticket";
+    } else {
+      claimBtn.disabled = true;
+      claimBtn.textContent = formatTime(remaining);
+      claimTimerInterval = setInterval(() => {
+        const left = CLAIM_COOLDOWN - (Date.now() - getLastClaim());
+        if (left <= 0) {
+          claimBtn.disabled = false;
+          claimBtn.textContent = "Claim Ticket";
+          clearInterval(claimTimerInterval);
+        } else {
+          claimBtn.textContent = "Claim Ticket (" + formatTime(left) + ")";
+        }
+      }, 1000);
+    }
+  }
+
+  function formatTime(ms) {
+    const total = Math.floor(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  }
+
+  document.getElementById('login-btn').onclick = () => {
+    username = document.getElementById('username').value.trim();
+    if (!username) return alert('Masukan Username!');
+
+    const users = loadUsers();
+    if (!users[username]) {
+      users[username] = { points: 0, tickets: 0, lastClaim: 0 };
+      saveUsers(users);
+    }
+
+    points = users[username].points;
+    tickets = users[username].tickets;
+
+    checkTicketRefresh();
+    updateClaimButton();
+
+    document.getElementById('user-name').textContent = username;
+    document.getElementById('points').textContent = points;
+    document.getElementById('tickets').textContent = tickets;
+
+    loginScreen.classList.add('hidden');
+    dashboardScreen.classList.remove('hidden');
+  };
+
+  claimBtn.onclick = () => {
+    const now = Date.now();
+    if (now - getLastClaim() < CLAIM_COOLDOWN) {
+      alert('Sudah claim! Tunggu dulu.');
+      return;
+    }
+    tickets += 5;
+    setLastClaim(now);
+    saveUser();
+    updateClaimButton();
+    document.getElementById('tickets').textContent = tickets;
+    alert('Kamu Mendapatkan 5 Tiket!');
+  };
+
+  document.getElementById('start-game').onclick = () => {
+    if (tickets < 1) return alert('Tiket habis! Tunggu 2 jam untuk refresh.');
+    tickets -= 1;
+    saveUser();
+    document.getElementById('tickets').textContent = tickets;
+    startGame();
+  };
+
+  document.getElementById('logout-btn').onclick = () => {
+    dashboardScreen.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+  };
+
+  function startGame() {
+    dashboardScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    gameScore = 0;
+    timeLeft = 30;
+    document.getElementById('time-left').textContent = timeLeft;
+    document.getElementById('game-score').textContent = gameScore;
+
+    gameInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById('time-left').textContent = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    spawnInterval = setInterval(spawnItem, 700);
+  }
+
+  function spawnItem() {
+    const gameArea = document.getElementById('game-area');
+    const img = document.createElement('img');
+    img.className = 'item';
+    const rand = Math.random();
+    let type = 'fruit';
+    if (rand < 0.4) type = 'bomb';
+    else if (rand < 0.5) type = 'durian';
+    img.src = IMAGES[type];
+    img.style.left = Math.random() * (gameArea.clientWidth - 70) + 'px';
+    img.style.top = '-70px';
+    gameArea.appendChild(img);
+
+    let posY = -70;
+    const fall = setInterval(() => {
+      posY += 5;
+      img.style.top = posY + 'px';
+      if (posY > gameArea.clientHeight) {
+        clearInterval(fall);
+        img.remove();
+      }
+    }, 20);
+
+    img.onclick = () => {
+      if (type === 'fruit') gameScore += 5;
+      else if (type === 'bomb') gameScore -= 10;
+      else if (type === 'durian') gameScore += 15;
+      if (gameScore < 0) gameScore = 0;
+      document.getElementById('game-score').textContent = gameScore;
+      img.remove();
+    };
+  }
+
+  function endGame() {
+    clearInterval(gameInterval);
+    clearInterval(spawnInterval);
+    points += gameScore;
+    saveUser();
+    alert(`Permainan Selesai! Score Kamu ${gameScore}`);
+    document.getElementById('points').textContent = points;
+    document.getElementById('tickets').textContent = tickets;
+    document.getElementById('game-area').innerHTML = '';
+    gameScreen.classList.add('hidden');
+    dashboardScreen.classList.remove('hidden');
+  }
+
+  document.getElementById('end-game').onclick = endGame;
+</script>
+
+</body>
+</html>
