@@ -360,7 +360,7 @@
       if (type === 'fruit') gameScore += 5;
       else if (type === 'bomb') {
         gameScore -= 10;
-        if (navigator.vibrate) navigator.vibrate(200);
+        if (navigator.vibrate) navigator.vibrate(500);
       }
       else if (type === 'durian') gameScore += 15;
       if (gameScore < 0) gameScore = 0;
