@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>DURKA Tap</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     html, body {
       margin: 0;
@@ -12,63 +12,81 @@
       overflow: hidden;
       font-family: Verdana, Geneva, Tahoma, sans-serif;
       background: #876969;
+      -webkit-tap-highlight-color: transparent;
     }
+
     .screen {
       position: absolute;
       width: 100vw;
       height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       background-size: cover;
       background-position: center;
     }
+
     .hidden {
       display: none;
     }
+
     .box {
       background: rgba(255,255,255,0.9);
-      padding: 30px;
+      padding: 5vw;
       border-radius: 10px;
-      max-width: 400px;
       width: 90%;
+      max-width: 400px;
       text-align: center;
       box-shadow: 0 0 15px rgba(0,0,0,0.3);
     }
+
+    input {
+      padding: 4vw;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 2vw;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 5vw;
+    }
+
     button {
-      padding: 15px 20px;
-      margin-top: 10px;
+      padding: 4vw;
+      margin-top: 2vw;
       background-color: #68d19b;
       color: #000;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       width: 100%;
-      font-size: 16px;
+      font-size: 5vw;
     }
+
     button:disabled {
       background-color: #ccc;
       cursor: not-allowed;
     }
-    input {
-      padding: 12px;
-      width: 100%;
-      box-sizing: border-box;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
 
-    /* Fullscreen game area */
     #game-screen {
       flex-direction: column;
     }
 
     #game-overlay {
       width: 100%;
-      background: rgba(255,255,255,0.8);
-      padding: 10px;
+      background: rgba(255,255,255,0.9);
       text-align: center;
+      padding: 3vw;
+    }
+
+    #game-overlay h2 {
+      font-size: 5vw;
+      margin: 0 0 2vw;
+    }
+
+    #game-overlay p {
+      font-size: 4.5vw;
+      margin: 1vw 0;
     }
 
     #game-area {
@@ -83,9 +101,52 @@
 
     .item {
       position: absolute;
-      width: 70px;
-      height: 70px;
+      width: 10vw;
+      height: 10vw;
+      max-width: 60px;
+      max-height: 60px;
+      min-width: 40px;
+      min-height: 40px;
       cursor: pointer;
+      user-select: none;
+    }
+
+    h2 {
+      margin: 0 0 2vw;
+      font-size: 6vw;
+    }
+
+    p {
+      font-size: 5vw;
+      margin: 1vw 0;
+    }
+
+    @media(min-width: 768px) {
+      .box {
+        padding: 20px;
+      }
+      input, button {
+        font-size: 18px;
+        padding: 15px 20px;
+      }
+      h2 {
+        font-size: 24px;
+      }
+      p {
+        font-size: 18px;
+      }
+      #game-overlay h2 {
+        font-size: 24px;
+      }
+      #game-overlay p {
+        font-size: 18px;
+      }
+      .item {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        min-height: 50px;
+      }
     }
   </style>
 </head>
@@ -112,11 +173,11 @@
   </div>
 </div>
 
-<!-- Game Screen Fullscreen -->
+<!-- Game Screen -->
 <div class="screen hidden" id="game-screen" style="background: #68d19b;">
   <div id="game-overlay">
     <h2>Tap Buahnya Kawan!</h2>
-    <p>Waktu Berakhir: <span id="time-left">30</span>s | Score: <span id="game-score">0</span></p>
+    <p>Waktu: <span id="time-left">30</span>s | Score: <span id="game-score">0</span></p>
     <button id="end-game">Keluar Permainan</button>
   </div>
   <div id="game-area"></div>
@@ -281,7 +342,7 @@
     if (rand < 0.4) type = 'bomb';
     else if (rand < 0.5) type = 'durian';
     img.src = IMAGES[type];
-    img.style.left = Math.random() * (gameArea.clientWidth - 70) + 'px';
+    img.style.left = Math.random() * (gameArea.clientWidth - 60) + 'px';
     img.style.top = '-70px';
     gameArea.appendChild(img);
 
